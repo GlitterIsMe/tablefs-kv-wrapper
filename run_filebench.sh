@@ -14,7 +14,14 @@ do
     mount="./tablefs -mountdir /mnt/tablefs -metadir /mnt/pmem/tablefs -datadir /mnt/pmem/tablefs"
     run="filebench -f ${bench_file} | tee ${fs_name}-${bench_file}.log"
     clear="umount /mnt/tablefs && rm -rf /mnt/pmem/${fs_name}/* && rm -rf /mnt/pmem/tablefs/*"
+
     echo ${mount}
+    eval ${mount}
+
     echo ${run}
+    eval ${run}
+
     echo ${clear}
+    eval ${clear}
+
 done
