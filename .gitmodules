@@ -5,7 +5,7 @@
 [submodule "kv/metakv"]
 	path = kv/metakv
 	url = https://github.com/HUSTERGS/MetaKV.git
-	branch = zyw-new-layout
+	branch = main
 [submodule "kv/hikv"]
 	path = kv/hikv
 	url = https://github.com/GlitterIsMe/open_hikv.git

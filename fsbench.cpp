@@ -10,6 +10,11 @@
 #include <utime.h>
 #include <string.h>
 #include <unistd.h>
+
+#include <chrono>
+#include <mutex>
+#include <atomic>
+
 #include "port/port.h"
 #include "leveldb/env.h"
 #include "fs/fswrapper.h"
@@ -179,6 +184,8 @@ private:
   Monitor* emon;
   FILE* logf;
 
+  std::mutex mu_;
+  std::atomic<bool> inited_directory_{false};
 
 public:
 
@@ -237,6 +244,7 @@ public:
 
     std::string benchfs = prop.getProperty("filesystem");
     if (benchfs == "tablefs_user" || benchfs == "tablefs_pred") {
+        printf("New TablefsWrapper\n");
       fs = new TableFSWrapper();
       if (fs->Setup(prop) < 0) {
         fprintf(stderr, "Fail to open tablefs_user\n");
@@ -282,18 +290,24 @@ private:
     sprintf(fpath, "%s/", prop.getProperty("target").c_str());
     char* end_fpath = fpath + strlen(fpath);
     int cnt = 0;
-    int numdirs = loader->GetNumDirectoryPaths();
-    printf("number dir %d\n", numdirs);
-    for (int i = 0; i < numdirs; ++i) {
-      char* path = loader->GetDirPath(i);
-      if (path != NULL) {
-        strcpy(end_fpath, path);
-        if (fs->Mkdir(fpath, S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
-          perror(fpath);
+    bool finished = inited_directory_.load(std::memory_order_release);
+    mu_.lock();
+    if (!inited_directory_.load(std::memory_order_release)) {
+        int numdirs = loader->GetNumDirectoryPaths();
+        printf("number dir %d\n", numdirs);
+        for (int i = 0; i < numdirs; ++i) {
+            char* path = loader->GetDirPath(i);
+            if (path != NULL) {
+                strcpy(end_fpath, path);
+                if (fs->Mkdir(fpath, S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
+                    perror(fpath);
+                }
+                thread->IncreaseCount();
+            }
         }
-        thread->IncreaseCount();
-      }
+        inited_directory_.store(true, std::memory_order_release);
     }
+    mu_.unlock();
     int numpaths = prop.getPropertyInt("create_numpaths");
     for (int i = thread->tid; i < numpaths; i += thread->step) {
       char* path = loader->GetFilePath(i);
@@ -327,6 +341,7 @@ private:
     srand(100);
     for (int i = 0; i < nquery; ++i) {
       int pi = rand() % npath;
+      //int pi = i % npath;
       char* path = loader->GetPath(pi);
       if (path != NULL) {
         strcpy(end_fpath, path);
@@ -622,7 +637,7 @@ private:
     ThreadArg* arg = reinterpret_cast<ThreadArg*>(v);
     SharedState* shared = arg->shared;
     ThreadState* thread = arg->thread;
-    {
+    /*{
       leveldb::MutexLock l(&shared->mu);
       shared->num_initialized++;
       if (shared->num_initialized >= shared->total) {
@@ -631,17 +646,17 @@ private:
       while (!shared->start) {
         shared->cv.Wait();
       }
-    }
+    }*/
 
     (arg->fsb->*(arg->method))(thread);
 
-     {
+     /*{
       leveldb::MutexLock l(&shared->mu);
       shared->num_done++;
       if (shared->num_done >= shared->total) {
         shared->cv.SignalAll();
       }
-    }
+    }*/
   }
 
   static void MonitorThreadBody(void* v) {
@@ -696,8 +711,11 @@ private:
     arg[n].shared = &shared;
     opstat->SetThreadArgs(n, thread_states);
 
-    for (int i = 0; i < n; i++) {
-      leveldb::Env::Default()->StartThread(ThreadBody, &arg[i]);
+      ThreadBody(&arg[0]);
+
+    /*for (int i = 0; i < n; i++) {
+        leveldb::Env::Default()->StartThread(ThreadBody, &arg[i]);
+        //ThreadBody(&arg[i]);
     }
     //TODO: Add monitor thread (change n to n + 1, < n to <=n )
     leveldb::Env::Default()->StartThread(MonitorThreadBody, &arg[n]);
@@ -728,7 +746,7 @@ private:
     emon->DoMonitor();
     tmon->DoMonitor();
 
-    opstat->Disable();
+    opstat->Disable();*/
     for (int i = 0; i < n; i++) {
       delete arg[i].thread;
     }
@@ -780,11 +798,16 @@ public:
         continue;
       }
 
-      time_t start = time(NULL);
+      //time_t start = time(NULL);
+      auto start = std::chrono::high_resolution_clock::now();
       RunBenchmark(num_threads, method);
-      time_t end = time(NULL);
+      auto end = std::chrono::high_resolution_clock::now();
+      uint64_t op = prop.getPropertyInt("create_numpaths");
+      uint64_t run_time = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+      //time_t end = time(NULL);
 
-      fprintf(logf, "%s: %ld\n", bench.c_str(), end-start);
+      fprintf(logf, "finished benchmark %s: time %lu, ops: %lf\n", bench.c_str(), run_time, op / run_time * 1000000);
+      printf("finished benchmark %s: time %lu, ops: %lf\n", bench.c_str(), run_time, op / run_time * 1000000);
 
       sync();
       command::DropBufferCache();

@@ -43,11 +43,13 @@ void TestFSWrapper(Properties &prop) {
     for (int i = 0; i < content_size; ++i)
         content[i] = rand() % 26 + 97;
     int fd;
-    printf("ls result = [%d]\n", fs->Listdir("/"));
+    //printf("ls result = [%d]\n", fs->Listdir("/"));
     //printf("finish first ls\n\n");
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 10000; ++i) {
         sprintf(fpath, "/%08x\0", i);
         fs->Mknod(fpath, S_IRWXU | S_IRWXG | S_IRWXO, 0);
+        std::string stat;
+        fs->GetStat(fpath, &stat);
         fd = fs->Open(fpath, O_WRONLY);
         if (fd == -1) {
             printf("open failed\n");
@@ -58,8 +60,29 @@ void TestFSWrapper(Properties &prop) {
         //    printf("finished %d\r", i);
         //}
     }
-    printf("ls result = [%d]\n", fs->Listdir("/"));
+    printf("ls result = {%s}[%d]\n", "/", fs->Listdir("/"));
+    fs->Mkdir("/test", S_IRWXU | S_IRWXG | S_IRWXO);
+    for (int i = 0; i < 10000; ++i) {
+        sprintf(fpath, "/test/%08x\0", i);
+        fs->Mknod(fpath, S_IRWXU | S_IRWXG | S_IRWXO, 0);
+        std::string stat;
+        fs->GetStat(fpath, &stat);
+        fd = fs->Open(fpath, O_WRONLY);
+        if (fd == -1) {
+            printf("open failed\n");
+        }
+        fs->Write(fd, content, content_size);
+        fs->Close(fd);
+        fs->Unlink(fpath);
+        fs->GetStat(fpath, &stat);
+        //if (i % 1000 == 0) {
+        //    printf("finished %d\r", i);
+        //}
+    }
+    printf("ls result = {%s}[%d]\n", "/test", fs->Listdir("/test"));
 
+    fs->Mkdir("/test/test2", S_IRWXU | S_IRWXG | S_IRWXO);
+    printf("ls result = {%s}[%d]\n", "/test", fs->Listdir("/test/test2"));
     delete fs;
 
     /*fs = new TableFSWrapper();

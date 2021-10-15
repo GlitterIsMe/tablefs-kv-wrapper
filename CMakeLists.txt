@@ -13,15 +13,17 @@ add_subdirectory(lib/leveldb)
 add_definitions(-D_FILE_OFFSET_BITS=64 )
 add_definitions(-DLEVELDB_PLATFORM_POSIX)
 
-option(BUILD_BENCH "build tablefs bench" OFF)
+option(BUILD_BENCH "build tablefs bench" ON)
 option(BUILD_TEST "build fs_test" ON)
 
 option(WITH_UTREE "build tablefs with utree" OFF)
 option(WITH_ROCKSDB "build tablefs with rocksdb" OFF)
 option(WITH_METAKV "build tablefs with metakv" OFF)
 option(WITH_HIKV "build tablefs with hikv" OFF)
-option(WITH_ROART "build tablefs with roart" OFF)
-option(WITH_TLHASH "build tablefs with two level hash" ON)
+option(WITH_ROART "build tablefs with roart" ON)
+option(WITH_TLHASH "build tablefs with two level hash" OFF)
+
+add_compile_options(-Wreturn-type)
 
 link_libraries(${LIBPMEM_LIBRARIES})
 include_directories(${LIBPMEM_INCLUDE_DIRS})
@@ -104,15 +106,62 @@ endif ()
 if (WITH_METAKV)
     message("Define MetaKV")
     add_definitions(-DMETAKV)
+
     target_sources(tablefs_lib PUBLIC
             "adaptor/metakv_wrapper.cc"
             "adaptor/metakv_wrapper.h"
+            "kv/metakv/src/buddy.cpp"
+            "kv/metakv/src/Chunk.cpp"
+            "kv/metakv/src/DentryTable.cpp"
+            "kv/metakv/src/FileMetaTable.cpp"
+            "kv/metakv/src/format.cpp"
+            "kv/metakv/src/Log.cpp"
+            "kv/metakv/src/MetaDB.cc"
+            "kv/metakv/src/NVMPointer.cc"
+            "kv/metakv/src/simple_buddy.cc"
+            "kv/metakv/src/Slice.cpp"
             )
-    find_library(CLHT_LIBRARIES NAMES clht PATHS kv/metakv/src/CLHT REQUIRED)
-    find_library(SSMEM_LIBRARIES NAMES ssmem PATHS kv/metakv/src/CLHT REQUIRED)
-    add_subdirectory(kv/metakv)
-    target_include_directories(tablefs_lib PUBLIC kv/metakv)
-    target_link_libraries(tablefs_lib metakv)
+
+    option(CCEH_IN_MEM "use CCEH in memory" OFF)
+    option(CLHT_IN_MEM "use CLHT in memory" ON)
+    option(SIMPLE_BUDDY "use simple version of allocator" OFF)
+
+    if (SIMPLE_BUDDY)
+        message("Use simplge buddy for MetaKV")
+        add_definitions(-DSIMPLEBUDDY)
+    endif()
+
+    if (CCEH_IN_MEM)
+        # cceh in memory
+        add_definitions(-DCCEH_IN_MEM)
+        target_compile_definitions(tablefs_lib PUBLIC -DCCEH_IN_MEM)
+        target_sources(tablefs_lib PUBLIC
+                "kv/metakv/src/CCEH/src/CCEH_MSB.cpp"
+        )
+        target_include_directories(tablefs_lib PUBLIC kv/metakv/src/CCEH/src kv/metakv/src/CCEH/util)
+    else()
+        # cceh in pmem
+        target_sources(tablefs_lib PUBLIC
+                "kv/metakv/src/CCEH/CCEH-PMDK/src/CCEH.cpp"
+                )
+        target_include_directories(tablefs_lib PUBLIC kv/metakv/src/CCEH/CCEH-PMDK/src)
+    endif()
+
+    if (CLHT_IN_MEM)
+        add_definitions(-DCLHT_IN_MEM)
+        target_compile_definitions(tablefs_lib PUBLIC -DCLHT_IN_MEM)
+        target_include_directories(tablefs_lib PUBLIC kv/metakv/src/CLHT)
+        find_library(CLHT_LIBRARIES NAMES clht PATHS kv/metakv/src/CLHT REQUIRED)
+        find_library(SSMEM_LIBRARIES NAMES ssmem PATHS kv/metakv/src/CLHT REQUIRED)
+        message("link ${CLHT_LIBRARIES} ${SSMEM_LIBRARIES}")
+        target_link_libraries(tablefs_lib ${CLHT_LIBRARIES} ${SSMEM_LIBRARIES})
+    else()
+        add_subdirectory(kv/metakv/src/P-CLHT)
+        target_include_directories(tablefs_lib PUBLIC kv/metakv/src/P-CLHT/include)
+    endif()
+    pkg_check_modules(TBB REQUIRED tbb)
+    target_include_directories(tablefs_lib PUBLIC kv/metakv kv/metakv/src)
+    target_link_libraries(tablefs_lib ${TBB_LIBRARIES} ${LIBPMEMOBJ_LIBRARIES} stdc++fs)
 endif ()
 
 if (WITH_ROART)
@@ -125,6 +174,7 @@ if (WITH_ROART)
     add_definitions(-DFF_GC) # ff_gc
     add_definitions(-DRECLAIM_MEMORY)
     add_definitions(-DKEY_INLINE)
+    add_definitions(-DARTPMDK)
     add_definitions(-DINSTANT_RESTART)
 
     add_definitions(-DLEAF_ARRAY)
