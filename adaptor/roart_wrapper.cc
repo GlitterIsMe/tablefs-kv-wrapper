@@ -17,12 +17,12 @@ namespace tablefs {
     int RoartWrappr::Put(const leveldb::Slice &key, const leveldb::Slice &value) {
         bool res = db_->Put(key.ToString(), value.ToString());
         if (res) {
-            /*{
-                std::string check;
-                bool check_res = db_->Get(key.ToString(), &check);
-                assert(value == leveldb::Slice(check));
-                printf("check put: %d\n", check_res);
-            }*/
+            {
+                //std::string check;
+                //bool check_res = db_->Get(key.ToString(), &check);
+                //assert(value == leveldb::Slice(check));
+                //printf("check put: %d\n", check_res);
+            }
             return 0;
         } else {
             return -1;
@@ -40,7 +40,11 @@ namespace tablefs {
     }
 
     int RoartWrappr::Delete(const leveldb::Slice &key) {
-        db_->Delete(key.ToString());
+        std::string result;
+        bool res = db_->Get(key.ToString(), &result);
+        if (res) {
+            db_->Delete(key.ToString());
+        }
         return 0;
     }
 
