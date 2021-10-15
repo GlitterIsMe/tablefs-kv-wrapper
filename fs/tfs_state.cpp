@@ -63,26 +63,32 @@ int FileSystemState::Setup(Properties& prop) {
 
   //metadb = new LeveldbWrapper();
 #ifdef UTREE
+printf("Init with utree\n");
   metadb = new uTreeWrapper();
 #endif
 
 #ifdef ROCKSDB
+    printf("Init with rocksdb\n");
   metadb = new RocksdbWrapper();
 #endif
 
 #ifdef METAKV
+    printf("Init with metakv\n");
   metadb = new MetaKVWrapper();
 #endif
 
 #ifdef HIKV
+    printf("Init with hikv\n");
   metadb = new HikvWrapper();
 #endif
 
 #ifdef ROART
+    printf("Init with roart\n");
   metadb = new RoartWrappr();
 #endif
 
 #ifdef TLHASH
+    printf("Init with tlhash\n");
     metadb = new TlhashWrapper();
 #endif
 
