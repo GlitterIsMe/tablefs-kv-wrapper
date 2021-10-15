@@ -169,6 +169,7 @@ int TableFSWrapper::Read(int fd, char* buf, size_t size) {
 static int list_dir_count = 0;
 int fuse_filler_dir(void* buf, const char* name, const struct stat *stbuf, off_t off) {
   ++list_dir_count;
+  return 1;
 }
 
 int TableFSWrapper::Listdir(const char* path) {
@@ -199,8 +200,9 @@ int lsstat_filler(void* buf, const char* name, const struct stat *stbuf, off_t o
 {
   strcpy(lsstat_end_fpath, name);
   struct stat statbuf;
-  lsstat_fs->Stat(lsstat_fpath, &statbuf);
+  int res = lsstat_fs->Stat(lsstat_fpath, &statbuf);
   ++lsstat_count;
+  return res;
 }
 
 int TableFSWrapper::Lsstat(const char* path) {
@@ -247,6 +249,7 @@ int scanfile_filler(void* buf, const char* name,
   }
   scanfile_fs->Close(fd);
   ++scanfile_count;
+  return 1;
 }
 
 int TableFSWrapper::Scanfile(const char* path) {
