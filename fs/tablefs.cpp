@@ -28,7 +28,7 @@
 #include "leveldb/db.h"
 #include "leveldb/cache.h"
 #include "leveldb/write_batch.h"
-#define RECORD_SCAN
+//#define RECORD_SCAN
 #ifdef RECORD_SCAN
 const std::string scan_file = "/home/zhangyiwen/tablefs-petakv/scan.log";
 #endif
@@ -468,7 +468,8 @@ void* TableFS::Init(struct fuse_conn_info *conn) {
     FreeInodeValue(value);
   }
   inode_cache = new InodeCache(metadb);
-  dentry_cache = new DentryCache(16384);
+  // default 16384
+  dentry_cache = new DentryCache(16);
   monitor_init(metadb);
   return state_;
 }
