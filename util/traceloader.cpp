@@ -12,6 +12,8 @@ namespace tablefs {
 
 static const int MemoryPageSize = 1024 * 1024;
 
+
+
 void TraceLoader::LoadTrace(const char* filename) {
   FILE* file = fopen(filename, "r");
   if (file == NULL) {
@@ -19,10 +21,12 @@ void TraceLoader::LoadTrace(const char* filename) {
     return;
   }
   char pathname[4096];
-  if (fscanf(file, "%ld %ld\n", &num_paths, &num_file_paths) != 2) {
+  /*if (fscanf(file, "%ld %ld\n", &num_paths, &num_file_paths) != 2) {
     printf("the format of trace file is wrong: %s\n", filename);
     return;
-  }
+  }*/
+  num_paths = 1430611;
+  num_file_paths = 1430611 - 171159;
   paths = (char**) allocator_->Allocate(num_paths * sizeof(char *));
   if (paths == NULL) {
     printf("Cannot allocate memory: %d\n", __LINE__);
@@ -34,6 +38,7 @@ void TraceLoader::LoadTrace(const char* filename) {
     exit(1);
   }
   FileRecord rec;
+  num_dir_paths = num_paths - num_file_paths;
   for (int i = 0; i < num_paths; ++i) {
     int len = 0;
     char c;
@@ -46,11 +51,14 @@ void TraceLoader::LoadTrace(const char* filename) {
     } while (c != '\n' && c != EOF);
     if (c == EOF)
       break;
-    pathname[len-3]='\0';
-    filetypes[i] = pathname[len-2];
-    paths[i] = AddEntry(pathname, len+1);
+    pathname[len-1]='\0';
+      if (i <= num_dir_paths) {
+          filetypes[i] = 'd';
+      } else {
+          filetypes[i] = 'f';
+      }
+    paths[i] = AddEntry(pathname, len);
   }
-  num_dir_paths = num_paths - num_file_paths;
   fclose(file);
 }
 
