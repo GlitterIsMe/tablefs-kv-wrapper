@@ -22,7 +22,7 @@ static const int MAX_PATH_LEN = 256;
 static const tfs_inode_t ROOT_INODE_ID = 0;
 static const int NUM_FILES_IN_DATADIR_BITS = 14;
 static const int NUM_FILES_IN_DATADIR = 16384;
-static const int MAX_OPEN_FILES = 512;
+static const int MAX_OPEN_FILES = 16;
 static const char* ROOT_INODE_STAT = "/tmp/";
 
 struct tfs_meta_key_t {
