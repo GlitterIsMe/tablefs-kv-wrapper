@@ -77,6 +77,8 @@ namespace tablefs {
                 logs_->LogMsg("Delete %d %x\n", data[0], data[1]);
             }
         }
+        HikvSlice value;
+        db_->Get(HikvSlice(key.data(), key.size()), &value);
         db_->Del(HikvSlice(key.data(), key.size()));
         return 0;
     }
