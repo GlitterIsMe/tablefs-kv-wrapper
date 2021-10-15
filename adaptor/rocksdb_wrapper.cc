@@ -20,7 +20,7 @@ namespace tablefs {
         assert(db_ == nullptr);
         int F_cache_size = p_.getPropertyInt("leveldb.cache.size", 16 << 20);
         cache_ = (F_cache_size >= 0) ? rocksdb::NewLRUCache(F_cache_size) : NULL;
-        db_name = p_.getProperty("leveldb.db", "/mnt/pmem/rocksdb");
+        db_name = "/mnt/pmem/rocksdb";
 
         rocksdb::Options options;
         options.create_if_missing =
@@ -44,11 +44,11 @@ namespace tablefs {
         options.level0_file_num_compaction_trigger = p_.getPropertyInt("leveldb_factor_level_files",
                                                                        rocksdb::Options().level0_file_num_compaction_trigger);
 
-        options.max_background_jobs = 2;
+        options.max_background_jobs = 1;
 
         // DCPMM
         options.dcpmm_kvs_enable = true;
-        options.dcpmm_kvs_mmapped_file_fullpath = "/mnt/pmem/rocksdb";
+        options.dcpmm_kvs_mmapped_file_fullpath = "/mnt/pmem/rocksdb/map";
         options.dcpmm_kvs_mmapped_file_size = 40UL * 1024 * 1024 * 1024;
         options.recycle_dcpmm_sst = true;
         options.env = rocksdb::NewDCPMMEnv(rocksdb::DCPMMEnvOptions());
@@ -67,6 +67,7 @@ namespace tablefs {
         async_data_size = 0;
         Status s = DB::Open(options, db_name, &db_);
         if (!s.ok()) {
+            fprintf(stderr, "Open failed : %s\n", s.ToString().c_str());
             return -1;
         } else {
             return 0;
