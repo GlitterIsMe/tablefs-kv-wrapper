@@ -33,23 +33,27 @@ namespace tablefs {
             suffix_ = std::string(key.data() + 8, 8);
         }
 
+        tfsKey(Slice key) {
+            internal_key_ = key;
+        }
+
         size_t EncodeSize() override {
             return prefix_.size() + suffix_.size() + 2 * sizeof(uint64_t);
         }
         void Encode() override {
             buff_.clear();
             PutFixed64(&buff_, prefix_.size());
-            buff_.append(prefix_);
             PutFixed64(&buff_, suffix_.size());
+            buff_.append(prefix_);
             buff_.append(suffix_);
             internal_key_ = Slice(buff_);
         }
         void Decode() override {
             Slice temp(internal_key_);
             uint64_t prefix_size = GetFixed64(&temp);
-            prefix_ = std::string(temp.data(), prefix_size);
-            temp = Slice(temp.data() + prefix_size);
             uint64_t suffix_size = GetFixed64(&temp);
+            prefix_ = std::string(temp.data(), prefix_size);
+            temp = Slice(temp.data() + prefix_size, temp.size() - prefix_size);
             suffix_ = std::string(temp.data(), suffix_size);
         }
         void GetPrefix(Slice * buff) override {

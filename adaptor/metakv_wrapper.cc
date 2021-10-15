@@ -9,8 +9,8 @@ namespace tablefs{
 
     int MetaKVWrapper::Init() {
         Options options;
-        options.cceh_file_size = 60UL * 1024 * 1024 * 1024;
-        options.data_file_size = 60UL * 1024 * 1024 * 1024;
+        options.cceh_file_size = 64UL * 1024 * 1024 * 1024;
+        options.data_file_size = 64UL * 1024 * 1024 * 1024;
         db_ = MetaDB{};
 
         path_ = p_.getProperty("leveldb.db", "/mnt/pmem/metakv");
@@ -61,12 +61,12 @@ namespace tablefs{
                 logs_->LogMsg("read %d %x\n", data[0], data[1]);
             }
         }
-        Slice val;
-        metakv_value.GetValue(&val);
-        result = val.ToString();
         if (!res) {
             return 0;
         } else {
+            Slice val;
+            metakv_value.GetValue(&val);
+            result = val.ToString();
             return 1;
         }
     }
@@ -160,7 +160,11 @@ namespace tablefs{
 
     leveldb::Slice MetaKVIterator::key() const {
         //return leveldb::Slice(iter->key.data(), iter->key.size());
-        return leveldb::Slice(dentry[cursor].key.data(), dentry[cursor].key.size());
+        //tfsKey key(Slice(dentry[cursor].key.data(), dentry[cursor].key.size()));
+        //key.Decode();
+        //uint64_t size = key.prefix_.size() + key.suffix_.size();
+
+        return leveldb::Slice(dentry[cursor].key.data() + 16, 16);
     }
 
     leveldb::Slice MetaKVIterator::value() const {
