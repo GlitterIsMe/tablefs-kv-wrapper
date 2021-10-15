@@ -58,7 +58,11 @@ const uint64_t log_size = 60UL * 1024 * 1024 * 1024;
     }
 
     int uTreeWrapper::Delete(const leveldb::Slice &key) {
-        db_->Delete(key.ToString());
+        std::string result;
+        bool res = db_->Get(key.ToString(), &result);
+        if (res) {
+            db_->Delete(key.ToString());
+        }
         return 0;
     }
 
